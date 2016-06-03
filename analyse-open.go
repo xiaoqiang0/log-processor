@@ -85,23 +85,23 @@ var packetLen = 1024 * 4
 
 var cityShortName = map[string]int{
 	"bj":  110000,
-	"sh":  310000
+	"sh":  310000,
 }
 var cityShortNameGlobal = map[string]int{
 	"us": 10001,
-	"ca": 10002
+	"ca": 10002,
 }
 var domain2pid = map[string]string{
 	"dianpu.lianjia.com": "dianpu",
-	"user.lianjia.com":   "user"
+	"user.lianjia.com":   "user",
 }
 var columnInfo = map[string]map[string][]string{
 	"lianjiaweb": {
-		"ershoufang":  []string{"list", "detail", "search"}
-	}
+		"ershoufang":  []string{"list", "detail", "search"},
+	},
 	"dianpu": {
 		"dianpu": []string{},
-	}
+	},
 }
 var subColumnMatchRule = map[string]map[string]string{
 	"detail":       {"key": "detail", "match": ".html"},
