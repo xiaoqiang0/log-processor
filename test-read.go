@@ -19,36 +19,40 @@ func recordLog(log string) {
 }
 
 
-func consumer(ch <-chan string, index int) {
+func consumer(ch <-chan string, index int, out chan<- string,) {
     var ip_pattern = `((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)`
     var reg *regexp.Regexp
     reg = regexp.MustCompile(ip_pattern)
     var count int = 0
+    var processed_file string
+    processed_file = fmt.Sprintf("/mm/processed_%d", index)
+    fout, _:= os.Create(processed_file)
+    defer fout.Close()
     for log := range ch {
+        //fmt.Println("OK")
+        if log == "done" {
+            break
+        }
+        //fout.WriteString("182.87.232.13 中国 江西 上饶 N/A\n")
+        continue
         splitted := strings.Split(log, "\" \"")
         count ++;
-        ip := splitted[2]
-        if len(splitted) == 1 {
+        if len(splitted) < 10 {
             continue
         }
+
+        ip := splitted[2]
         if !reg.MatchString(ip) {
             continue
         }
         if loc, err := ip17mon.Find(ip); err != nil {
-            fmt.Fprintf(os.Stderr, "%s: %v\n", os.Args[1], err)
-            os.Exit(1)
-        } else {
-            fmt.Println(loc.Country, loc.Region, loc.City, loc.Isp)
-        }
-        //fmt.Println(ip)
-        /* pos1 := str.IndexOf(log, "GET /t.gif?", 0)
-        if pos1 == -1 {
             continue
-        } */
-        //fmt.Println("1")
+        } else {
+            fout.WriteString(fmt.Sprintf("%s %s %s %s %s\n", ip, loc.Country, loc.Region, loc.City, loc.Isp))
+        }
     }
-
-    fmt.Println("Thread: ", index, "processed: ", count)
+    recordLog(fmt.Sprintf("Thread: %d processed %d.\n", index, count))
+    out <- fmt.Sprintf("%d\n", count)
 }
 
 
@@ -61,18 +65,23 @@ func ReadLine(filePth string, consumerNumber int) error {
     defer f.Close()
 
     // Go
-    var ch = make(chan string, consumerNumber)
+    var chlist []chan string
     for i := 0; i < consumerNumber; i++ {
-        go consumer(ch, i)
+        chlist = append(chlist, make(chan string, 2048))
+    }
+    var out = make(chan string, consumerNumber)
+    for i := 0; i < consumerNumber; i++ {
+        go consumer(chlist[i], i, out)
     }
 
     r := 0
     bfRd := bufio.NewReader(f)
     for {
         line, err := bfRd.ReadString('\n')
-        ch <- line
-
         r++
+        idx := r % consumerNumber;
+        chlist[idx] <- line
+
         if r%10000 == 0 {
             recordLog("readline:" + strconv.Itoa(r))
         }
@@ -85,16 +94,25 @@ func ReadLine(filePth string, consumerNumber int) error {
             }
         }
     }
+
+    for i := 0; i < consumerNumber; i++ {
+        chlist[i] <- "done"
+    }
+
+    for i := 0; i < consumerNumber; i++ {
+        msg := <-out
+        fmt.Println("DONE--------------", msg)
+    }
     return nil
 }
 
 func main() {
-    runtime.GOMAXPROCS(20)
+    runtime.GOMAXPROCS(24)
     if err := ip17mon.Init("17monipdb.dat"); err != nil {
         recordLog("load Ipdata error")
         panic(err)
     }
-    var file string = "access.log"
-    ReadLine(file, 20)
+    var file string = "/mm/access.log.big"
+    ReadLine(file, 24)
     recordLog("File Read Done. redisPool")
 }
