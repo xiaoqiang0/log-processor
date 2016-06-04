@@ -11,6 +11,8 @@ import (
     "os"
     "strings"
     "sync"
+    "github.com/howeyc/fsnotify"
+    "log"
 )
 
 const parallel int = 24
@@ -93,9 +95,46 @@ func processLogfile(filePth string, n *sync.WaitGroup, consumerNumber int) error
     return nil
 }
 
+func watch(dir string) {
+
+    watcher, err := fsnotify.NewWatcher()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    done := make(chan bool)
+
+    // Process events
+    go func() {
+        for {
+            select {
+            case ev := <-watcher.Event:
+                log.Println("event:", ev)
+                log.Println("done")
+            case err := <-watcher.Error:
+                log.Println("error:", err)
+            }
+        }
+    }()
+
+    err = watcher.WatchFlags(dir, fsnotify.FSN_CREATE)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Hang so program doesn't exit
+    <-done
+
+    /* ... do stuff ... */
+    watcher.Close()
+}
+
+
 func main() {
     runtime.GOMAXPROCS(parallel)
 
+    // TODO: need implement
+    //watch("/mm")
     for i := 0; i < parallel; i++ {
         chlist = append(chlist, make(chan string, 4096))
     }
