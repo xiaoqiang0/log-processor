@@ -13,6 +13,7 @@ import (
     "sync"
     "github.com/howeyc/fsnotify"
     "log"
+    "compress/gzip"
 )
 
 const parallel int = 24
@@ -76,10 +77,17 @@ func processLogfile(filePth string, n *sync.WaitGroup, consumerNumber int) error
     }
     defer f.Close()
 
-    // Go
-    //var ch = make(chan string, consumerNumber)
+    // gzip read
+    gr, err := gzip.NewReader(f)
+    if err != nil {
+        panic(err)
+    }
+    defer gr.Close()
+
+    // tar read
+    bfRd := bufio.NewReader(gr)
+
     r := 0
-    bfRd := bufio.NewReader(f)
     for {
         line, err := bfRd.ReadString('\n')
         r++
@@ -154,7 +162,7 @@ func main() {
     // Prepare files list
 
     for i :=0; i < 1200; i++ {
-        this_file := fmt.Sprintf("/mm/%d", i)
+        this_file := fmt.Sprintf("/mm/%d.gz", i)
         file_list = append(file_list, this_file)
     }
 
