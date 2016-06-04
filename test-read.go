@@ -34,7 +34,7 @@ func consumer(ch <-chan string, index int, out chan<- string,) {
             break
         }
         //fout.WriteString("182.87.232.13 中国 江西 上饶 N/A\n")
-        continue
+        //continue
         splitted := strings.Split(log, "\" \"")
         count ++;
         if len(splitted) < 10 {
@@ -65,9 +65,10 @@ func ReadLine(filePth string, consumerNumber int) error {
     defer f.Close()
 
     // Go
+    //var ch = make(chan string, consumerNumber)
     var chlist []chan string
     for i := 0; i < consumerNumber; i++ {
-        chlist = append(chlist, make(chan string, 2048))
+        chlist = append(chlist, make(chan string, 4096))
     }
     var out = make(chan string, consumerNumber)
     for i := 0; i < consumerNumber; i++ {
@@ -79,7 +80,7 @@ func ReadLine(filePth string, consumerNumber int) error {
     for {
         line, err := bfRd.ReadString('\n')
         r++
-        idx := r % consumerNumber;
+        idx := r % consumerNumber
         chlist[idx] <- line
 
         if r%10000 == 0 {
@@ -94,8 +95,8 @@ func ReadLine(filePth string, consumerNumber int) error {
             }
         }
     }
-
     for i := 0; i < consumerNumber; i++ {
+        //ch <- "done"
         chlist[i] <- "done"
     }
 
