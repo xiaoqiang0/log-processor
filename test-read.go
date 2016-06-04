@@ -9,15 +9,19 @@ import (
     "regexp"
     "github.com/wangtuanjie/ip17mon"
     "os"
-    "strconv"
     "strings"
+    "sync"
 )
+
+const parallel int = 24
+
+var out = make(chan string, parallel)
+var chlist []chan string
 
 func recordLog(log string) {
 	t := time.Now().Format("2006-01-02 15:04:05")
 	fmt.Println(t + " " + log + "\n")
 }
-
 
 func consumer(ch <-chan string, index int, out chan<- string,) {
     var ip_pattern = `((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)`
@@ -25,18 +29,15 @@ func consumer(ch <-chan string, index int, out chan<- string,) {
     reg = regexp.MustCompile(ip_pattern)
     var count int = 0
     var processed_file string
-    processed_file = fmt.Sprintf("/mm/processed_%d", index)
+    processed_file = fmt.Sprintf("/mm/processed/%d", index)
     fout, _:= os.Create(processed_file)
     defer fout.Close()
+
     for log := range ch {
-        //fmt.Println("OK")
-        if log == "done" {
-            break
-        }
-        //fout.WriteString("182.87.232.13 中国 江西 上饶 N/A\n")
-        //continue
         splitted := strings.Split(log, "\" \"")
         count ++;
+        // fout.WriteString("59.52.41.18 中国 江西 南昌 N/A\n")
+        // continue
         if len(splitted) < 10 {
             continue
         }
@@ -51,30 +52,23 @@ func consumer(ch <-chan string, index int, out chan<- string,) {
             fout.WriteString(fmt.Sprintf("%s %s %s %s %s\n", ip, loc.Country, loc.Region, loc.City, loc.Isp))
         }
     }
-    recordLog(fmt.Sprintf("Thread: %d processed %d.\n", index, count))
+
+    //recordLog(fmt.Sprintf("Thread: %d processed %d.\n", index, count))
     out <- fmt.Sprintf("%d\n", count)
 }
 
 
-func ReadLine(filePth string, consumerNumber int) error {
+func processLogfile(filePth string, n *sync.WaitGroup, consumerNumber int) error {
+    defer n.Done()
+
     f, err := os.Open(filePth)
     if err != nil {
         return err
     }
-
     defer f.Close()
 
     // Go
     //var ch = make(chan string, consumerNumber)
-    var chlist []chan string
-    for i := 0; i < consumerNumber; i++ {
-        chlist = append(chlist, make(chan string, 4096))
-    }
-    var out = make(chan string, consumerNumber)
-    for i := 0; i < consumerNumber; i++ {
-        go consumer(chlist[i], i, out)
-    }
-
     r := 0
     bfRd := bufio.NewReader(f)
     for {
@@ -82,38 +76,60 @@ func ReadLine(filePth string, consumerNumber int) error {
         r++
         idx := r % consumerNumber
         chlist[idx] <- line
-
-        if r%10000 == 0 {
-            recordLog("readline:" + strconv.Itoa(r))
-        }
-        if err != nil {
-            if err == io.EOF {
-                break
-                recordLog("wait, readline:" + strconv.Itoa(r))
-            } else {
-                recordLog("ReadString err")
-            }
+        if err != nil && err == io.EOF {
+            break
         }
     }
-    for i := 0; i < consumerNumber; i++ {
-        //ch <- "done"
-        chlist[i] <- "done"
-    }
 
-    for i := 0; i < consumerNumber; i++ {
-        msg := <-out
-        fmt.Println("DONE--------------", msg)
-    }
+    fmt.Printf("Finished processing %s with %d records\n", filePth, r)
+
     return nil
 }
 
 func main() {
-    runtime.GOMAXPROCS(24)
+    runtime.GOMAXPROCS(parallel)
+
+    for i := 0; i < parallel; i++ {
+        chlist = append(chlist, make(chan string, 4096))
+    }
+
+    for i := 0; i < parallel; i++ {
+        go consumer(chlist[i], i, out)
+    }
+
+
     if err := ip17mon.Init("17monipdb.dat"); err != nil {
         recordLog("load Ipdata error")
         panic(err)
     }
-    var file string = "/mm/access.log.big"
-    ReadLine(file, 24)
-    recordLog("File Read Done. redisPool")
+
+    var file_list []string;
+
+    // Prepare files list
+
+    for i :=0; i < 1200; i++ {
+        this_file := fmt.Sprintf("/mm/%d", i)
+        file_list = append(file_list, this_file)
+    }
+
+    var wg sync.WaitGroup
+
+    for _, file := range file_list {
+        wg.Add(1)
+        go processLogfile(file, &wg, parallel)
+    }
+
+    go func() {
+        wg.Wait()
+        for i := 0; i < parallel; i++ {
+            close(chlist[i])
+        }
+    }()
+
+    for i := 0; i < parallel; i++ {
+        msg := <-out
+        fmt.Printf("Thread<%d> finished %s", i, msg)
+    }
+
+    recordLog("Done.")
 }
