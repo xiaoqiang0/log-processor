@@ -18,6 +18,9 @@ const parallel int = 24
 var out = make(chan string, parallel)
 var chlist []chan string
 
+// 一次最多同时处理文件个数
+var sema = make(chan struct{}, 256)
+
 func recordLog(log string) {
 	t := time.Now().Format("2006-01-02 15:04:05")
 	fmt.Println(t + " " + log + "\n")
@@ -59,6 +62,10 @@ func consumer(ch <-chan string, index int, out chan<- string,) {
 
 
 func processLogfile(filePth string, n *sync.WaitGroup, consumerNumber int) error {
+
+    sema <- struct{}{}        // acquire token                              
+    defer func() { <-sema }() // release token 
+
     defer n.Done()
 
     f, err := os.Open(filePth)
@@ -115,6 +122,7 @@ func main() {
     var wg sync.WaitGroup
 
     for _, file := range file_list {
+        fmt.Printf("Start processing %s\n", file)
         wg.Add(1)
         go processLogfile(file, &wg, parallel)
     }
