@@ -24,6 +24,9 @@ var chlist []chan string
 // 一次最多同时处理文件个数
 var sema = make(chan struct{}, 256)
 
+// for wait
+var wg sync.WaitGroup
+
 func Verbose(s string) string {
     ss := strings.FieldsFunc(s, func(r rune) bool { return r == '\r' || r == '\n' })
     for i, t := range ss {
@@ -180,36 +183,59 @@ func processLogfile(filePth string, n *sync.WaitGroup, consumerNumber int) error
 
 func watch(dir string) {
 
+    var file_pattern = `\.gz$`
+    var file_re *regexp.Regexp = regexp.MustCompile(file_pattern)
+
     watcher, err := fsnotify.NewWatcher()
     if err != nil {
         log.Fatal(err)
     }
+    var ch = make(chan string)
 
-    done := make(chan bool)
 
+    // Setting max files to be processed
+    wg.Add(4800)
     // Process events
     go func() {
         for {
             select {
             case ev := <-watcher.Event:
-                log.Println("event:", ev)
-                log.Println("done")
+                if ev != nil && file_re.MatchString(ev.Name) {
+                    // wg.Add(1) // wait forever ...
+                    watched_file := ev.Name
+                    go processLogfile(watched_file, &wg, GOMAXPROCS)
+                    fmt.Printf("Start processing %s\n", watched_file)
+                }
             case err := <-watcher.Error:
                 log.Println("error:", err)
             }
         }
     }()
 
-    err = watcher.WatchFlags(dir, fsnotify.FSN_CREATE)
     if err != nil {
         log.Fatal(err)
     }
 
-    // Hang so program doesn't exit
-    <-done
 
+    err = watcher.WatchFlags(dir, fsnotify.FSN_CREATE)
+
+    go func() {
+        wg.Wait()
+        fmt.Printf("Start close channels ...\n")
+        for i := 0; i < GOMAXPROCS; i++ {
+            close(chlist[i])
+        }
+
+        watcher.Close()
+        fmt.Printf("Closed ...\n")
+        ch <- "done\n"
+        <-ch
+        fmt.Printf("Sent close signal ...\n")
+    }()
+
+
+    // Hang so program doesn't exit
     /* ... do stuff ... */
-    watcher.Close()
 }
 
 
@@ -246,9 +272,6 @@ func main() {
     }
 
 
-    // TODO: need implement
-    //watch("/mm")
-
 
     // create chanel
     for i := 0; i < GOMAXPROCS; i++ {
@@ -268,29 +291,23 @@ func main() {
     }
 
 
-    // Prepare files list
+    /* Prepare files list
     var file_list []string;
     for i :=0; i < 1200; i++ {
         this_file := fmt.Sprintf("/mm/%d.gz", i)
         file_list = append(file_list, this_file)
     }
 
-
-    // for wait
-    var wg sync.WaitGroup
-
     for _, file := range file_list {
         fmt.Printf("Start processing %s\n", file)
         wg.Add(1)
         go processLogfile(file, &wg, GOMAXPROCS)
     }
+    */
 
-    go func() {
-        wg.Wait()
-        for i := 0; i < GOMAXPROCS; i++ {
-            close(chlist[i])
-        }
-    }()
+    // TODO: need implement
+    watch("/mm")
+
 
     // show the report for each consumer
     for i := 0; i < GOMAXPROCS; i++ {
