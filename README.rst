@@ -39,3 +39,23 @@ Steps
 
 监控处理任务的 ``log`` 文件.
 
+Optimizations
+=============
+
+tmpfs
+-----
+
+
+::
+
+    $  mount -t tmpfs -o size=10G tmpfs /mm1/
+    $  mount -t tmpfs -o size=10G tmpfs /mm/
+
+max files can be watched at once
+--------------------------------
+
+    
+::
+
+    $ cat /proc/sys/fs/inotify/max_user_watches
+    8192
