@@ -16,9 +16,9 @@ import (
     "github.com/wangtuanjie/ip17mon"
 )
 
-const parallel int = 24
+var GOMAXPROCS int = runtime.NumCPU()
 
-var out = make(chan string, parallel)
+var out = make(chan string, GOMAXPROCS)
 var chlist []chan string
 
 // 一次最多同时处理文件个数
@@ -214,7 +214,7 @@ func watch(dir string) {
 
 
 func main() {
-    runtime.GOMAXPROCS(parallel)
+    runtime.GOMAXPROCS(GOMAXPROCS)
 
 
     vcdn_log_format = make(map[string]map[string]int)
@@ -251,12 +251,12 @@ func main() {
 
 
     // create chanel
-    for i := 0; i < parallel; i++ {
+    for i := 0; i < GOMAXPROCS; i++ {
         chlist = append(chlist, make(chan string, 4096))
     }
 
     // create consumers 
-    for i := 0; i < parallel; i++ {
+    for i := 0; i < GOMAXPROCS; i++ {
         go consumer(chlist[i], i, out)
     }
 
@@ -282,18 +282,18 @@ func main() {
     for _, file := range file_list {
         fmt.Printf("Start processing %s\n", file)
         wg.Add(1)
-        go processLogfile(file, &wg, parallel)
+        go processLogfile(file, &wg, GOMAXPROCS)
     }
 
     go func() {
         wg.Wait()
-        for i := 0; i < parallel; i++ {
+        for i := 0; i < GOMAXPROCS; i++ {
             close(chlist[i])
         }
     }()
 
     // show the report for each consumer
-    for i := 0; i < parallel; i++ {
+    for i := 0; i < GOMAXPROCS; i++ {
         msg := <-out
         fmt.Printf("Thread<%d> finished %s", i, msg)
     }
