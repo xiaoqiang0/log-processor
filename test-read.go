@@ -31,27 +31,43 @@ func recordLog(log string) {
 
 func consumer(ch <-chan string, index int, out chan<- string,) {
     var ip_pattern = `((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)`
-    var reg *regexp.Regexp
-    reg = regexp.MustCompile(ip_pattern)
+    var line_pattern = `^\"dispatcher\"\s\"0.3\"\s\"(?P<remote_ip>[^\"]*)\"\s\"(?P<host>[^\"]*)\"\s\"(?P<zone_name>[^\"]*)\"\s\"(?P<idc_name>[^\"]*)\"\s\"(?P<vcdn_ip>[^\"]*)\"\s\"(?P<remote_user>[^\"]*)\"\s\"(?P<time_local>[^\"]*)\"\s\"(?P<request>[^\"]*)\"\s\"(?P<hstatus>[^\"]*)\"\s\"(?P<body_bytes_sent>[^\"]*)\"\s\"(?P<retime>[^\"]*)\"\s\"(?P<uuid>[^\"]*)\"\s\"(?P<http_referer>[^\"]*)\"\s\"(?P<UA>[^\"]*)\"\s\"(?P<hreferer>[^\"]*)\"\s\"(?P<server_ip>[^\"]*)\"\s\"(?P<hotreq>[^\"]*)\"\s\"(?P<qiyi_id>[^\"]*)\"\s\"(?P<qiyi_pid>[^\"]*)\"\s\"(?P<tcp_rtt>[^\"]*)\"\s\"(?P<tcp_rttvar>[^\"]*)\"\s\"(?P<extends>[^\"]*)\"$`
+    var ip_re *regexp.Regexp
+    var line_re *regexp.Regexp
+
+    ip_re = regexp.MustCompile(ip_pattern)
+    line_re  = regexp.MustCompile(line_pattern)
+
     var count int = 0
-    var processed_file string
-    processed_file = fmt.Sprintf("/mm/processed/%d", index)
-    fout, _:= os.Create(processed_file)
+
+    var write_to_file string
+    write_to_file = fmt.Sprintf("/mm/processed/%d", index)
+    fout, _:= os.Create(write_to_file)
     defer fout.Close()
 
     for log := range ch {
-        splitted := strings.Split(log, "\" \"")
+        log = strings.TrimSpace(log)
         count ++;
         // fout.WriteString("59.52.41.18 中国 江西 南昌 N/A\n")
         // continue
+        text := line_re.FindSubmatch([]byte(log))
+        if text == nil {
+            fout.WriteString(log)
+            continue
+        }
+
+        splitted := strings.Split(log, "\" \"")
+
         if len(splitted) < 10 {
             continue
         }
 
+
         ip := splitted[2]
-        if !reg.MatchString(ip) {
+        if !ip_re.MatchString(ip) {
             continue
         }
+
         if loc, err := ip17mon.Find(ip); err != nil {
             continue
         } else {
