@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-NF=4800
+NF=1
 N_POOL=300
 
 function process_pool_stall ()
@@ -22,8 +22,8 @@ rm -rf /mm/*.gz
 #    process_pool_stall
 #    rm -f /mm/$i.gz &
 #done
-
+#
 echo "Start rsync ..."
-time rsync -avr /mm1/ /mm >/dev/null 2>&1
+time rsync -avr /mm1/ /mm #>/dev/null 2>&1
 
 echo "done"

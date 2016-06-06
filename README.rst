@@ -18,6 +18,13 @@ Test Cases Description
 Steps
 =====
 
+编译
+
+::
+
+    $ make
+
+
 准备测试日志压缩文件:
 
 ::
@@ -59,3 +66,15 @@ max files can be watched at once
 
     $ cat /proc/sys/fs/inotify/max_user_watches
     8192
+
+TODO
+====
+
+- 参数支持
+
+  * 批量模式: 指定处理多少文件后停止
+  * inotify模式: 一直监控
+  * 同时处理文件的个数
+  * GOMAXPROCS 设置，目前默认是CPU个数
+
+
