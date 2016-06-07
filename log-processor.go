@@ -5,6 +5,7 @@ import (
     "os"
     "fmt"
     "log"
+    "net"
     "sync"
     "bufio"
     "regexp"
@@ -28,8 +29,6 @@ var sema = make(chan struct{}, MAXPARALLEL)
 var wg sync.WaitGroup
 
 func consumer(ch <-chan string, index int, out chan<- string,) {
-    var ip_pattern = `((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)`
-    var ip_re *regexp.Regexp = regexp.MustCompile(ip_pattern)
     var count int = 0
     key2idx := VCDN_LOG_FORMAT["0.3"]
     expected_fields_len := len(key2idx)
@@ -51,7 +50,8 @@ func consumer(ch <-chan string, index int, out chan<- string,) {
         }
 
         ip := splitted[key2idx["remote_ip"]]
-        if !ip_re.MatchString(ip) {
+        parsed_ip := net.ParseIP(ip)
+        if parsed_ip == nil {
             continue
         }
 
