@@ -17,6 +17,7 @@ import (
 )
 
 var GOMAXPROCS int = runtime.NumCPU()
+
 var MAXPARALLEL int = 256
 
 var out = make(chan string, GOMAXPROCS)
@@ -96,11 +97,10 @@ func processLogfile(filePth string, n *sync.WaitGroup, consumerNumber int) error
     defer gr.Close()
 
     // tar read
-    bfRd := bufio.NewReader(gr)
-
+    scanner := bufio.NewScanner(gr)
     r := 0
-    for {
-        line, err := bfRd.ReadString('\n')
+    for scanner.Scan() {
+        line := scanner.Text()
         r++
         idx := r % consumerNumber
         chlist[idx] <- line
