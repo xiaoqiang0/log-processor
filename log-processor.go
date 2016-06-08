@@ -31,8 +31,7 @@ var wg sync.WaitGroup
 
 func consumer(ch <-chan string, index int, out chan<- string,) {
     var count int = 0
-    key2idx := VCDN_LOG_FORMAT["0.3"]
-    expected_fields_len := len(key2idx)
+    expected_fields_len := len(VCDN_LOG_FORMAT["fields"])
 
     var write_to_file string
     write_to_file = fmt.Sprintf("/mm/processed/%d", index)
@@ -50,7 +49,7 @@ func consumer(ch <-chan string, index int, out chan<- string,) {
             continue
         }
 
-        ip := splitted[key2idx["remote_ip"]]
+        ip := splitted[VCDN_LOG_KEY2IDX["remote_ip"]]
         parsed_ip := net.ParseIP(ip)
         if parsed_ip == nil {
             continue
@@ -65,8 +64,8 @@ func consumer(ch <-chan string, index int, out chan<- string,) {
                                         loc.Region,
                                         loc.City,
                                         loc.Isp,
-                                        splitted[key2idx["hstatus"]],
-                                        splitted[key2idx["bbytes_sent"]],
+                                        splitted[VCDN_LOG_KEY2IDX["hstatus"]],
+                                        splitted[VCDN_LOG_KEY2IDX["bbytes_sent"]],
                                     ))
         }
     }

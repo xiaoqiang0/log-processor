@@ -3,34 +3,41 @@ package main
 import (
 )
 
-var VCDN_LOG_FORMAT map[string]map[string]int
+var VCDN_LOG_FORMAT map[string][]string
+var VCDN_LOG_KEY2IDX map[string]int
 
 func logformat_init() {
-    VCDN_LOG_FORMAT = make(map[string]map[string]int)
-    VCDN_LOG_FORMAT["0.3"] = map[string]int{
-        "head": 0,
-        "version": 1,
-        "remote_ip": 2,
-        "host": 3,
-        "zone_name": 4,
-        "idc_name": 5,
-        "vcdn_ip": 6,
-        "remote_user": 7,
-        "time_local": 8,
-        "request": 9,
-        "hstatus": 10,
-        "bbytes_sent": 11,
-        "retime": 12,
-        "uuid": 13,
-        "http_referer": 14,
-        "UA": 15,
-        "hreferer": 16,
-        "server_ip": 17,
-        "hotreq": 18,
-        "qiyi_id": 19,
-        "qiyi_pid": 20,
-        "tcp_rtt": 21,
-        "tcp_rttvar": 22,
-        "extends": 23,
+    VCDN_LOG_FORMAT = make(map[string][]string)
+    VCDN_LOG_KEY2IDX = make(map[string]int)
+    VCDN_LOG_FORMAT["fields"] = []string{
+        "head",
+        "version",
+        "remote_ip",
+        "host",
+        "zone_name",
+        "idc_name",
+        "vcdn_ip",
+        "remote_user",
+        "time_local",
+        "request",
+        "hstatus",
+        "bbytes_sent",
+        "retime",
+        "uuid",
+        "http_referer",
+        "UA",
+        "hreferer",
+        "server_ip",
+        "hotreq",
+        "qiyi_id",
+        "qiyi_pid",
+        "tcp_rtt",
+        "tcp_rttvar",
+        "extends",
     }
+
+    for idx, field := range(VCDN_LOG_FORMAT["fields"]) {
+        VCDN_LOG_KEY2IDX[field] = idx
+    }
+
 }
