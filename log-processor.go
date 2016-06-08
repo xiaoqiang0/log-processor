@@ -98,18 +98,18 @@ func processLogfile(filePth string, n *sync.WaitGroup, consumerNumber int) error
 
     // tar read
     scanner := bufio.NewScanner(gr)
-    r := 0
+    c := 0
     for scanner.Scan() {
         line := scanner.Text()
-        r++
-        idx := r % consumerNumber
-        chlist[idx] <- line
+        c++
+        //idx := r % consumerNumber
+        chlist[consumerNumber] <- line
         if err != nil && err == io.EOF {
             break
         }
     }
 
-    fmt.Printf("Finished processing %s with %d records\n", filePth, r)
+    fmt.Printf("Finished processing %s with %d records\n", filePth, c)
 
     return nil
 }
@@ -128,6 +128,7 @@ func watchLogDir(dir string) {
 
     // Setting max files to be processed
     wg.Add(4800)
+    i := 0
     // Process events
     go func() {
         for {
@@ -136,7 +137,8 @@ func watchLogDir(dir string) {
                 if ev != nil && file_re.MatchString(ev.Name) {
                     // wg.Add(1) // wait forever ...
                     watched_file := ev.Name
-                    go processLogfile(watched_file, &wg, GOMAXPROCS)
+                    go processLogfile(watched_file, &wg, i % GOMAXPROCS)
+                    i ++
                     fmt.Printf("Start processing %s\n", watched_file)
                 }
             case err := <-watcher.Error:
