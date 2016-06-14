@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+OLD_PS1="$PS1"
+OLD_GOPATH="$GOPATH"
+OLD_GOBIN="$GOBIN"
+
+deactivate () {
+    export GOPATH="$OLD_GOPATH"
+    export GOBIN="$OLD_GOBIN"
+    export PS1="$OLD_PS1"
+    echo $GOPATH
+}
+
+CURDIR=`pwd`
+export GOPATH="$CURDIR"
+export GOBIN="$CURDIR/bin/"
+PS1="(`basename $CURDIR`)$PS1"
+echo $GOPATH
+
+   
